@@ -38,7 +38,7 @@ While **@copyof** signifies a duplicate copy of an element, the **@sameas** indi
 {% include figure img="modules/analysis/chor003_m1-2.png" caption="Bach Chorale, Ach Gott, vom Himmel sieh' darein, m. 1-2" %}
 {% include mei example="analysis/analysis-sample175.xml" valid="" %}
 
-While **@copyof** and **@sameas** have defined semantics, the **@corresp** may be used to create user-defined relationships between elements. The example below demonstrates the encoding of a relationship between #note3 and the fermata, even though the fermata is not placed directly above the note.
+While **@copyof** and **@sameas** have defined semantics, the **@corresp** may be used to create user-defined relationships between elements. The example below demonstrates the encoding of a relationship between the third note and the fermata, even though the fermata is not placed directly above the note.
 
 {% include mei example="analysis/analysis-sample176.xml" valid="" %}
 
