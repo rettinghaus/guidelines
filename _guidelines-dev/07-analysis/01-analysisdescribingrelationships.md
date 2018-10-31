@@ -6,9 +6,14 @@ version: "dev"
 
 The relationships between event elements, such as note, chord, and rest, are the basic material of musical analysis; the attributes described below ensure a closed network of these relations and provide the opportunity to record data useful for common analytical tasks. In the context of a formal analysis, for instance, the attributes presented here can be useful in the capture information about the structure of a musical work.
 
-The analysis module offers several attributes in the {% include link att="linking" %} class for the description of basic relationships:
+The shared module offers several attributes in the {% include link att="linking" %} class for the description of basic relationships:
 
-{% include desc atts="att.linking/copyof att.linking/corresp att.linking/next att.linking/prev att.linking/sameas att.linking/synch" %}
+{% include desc atts="att.linking/copyof
+att.linking/corresp
+att.linking/next
+att.linking/prev
+att.linking/sameas
+att.linking/synch" %}
 
 The {% include link att="alignment" %} class also contains an attribute for describing temporal relationships:
 
@@ -33,10 +38,7 @@ This example can be reduced further by using **@copyof** inside the initial tupl
 
 {% include mei example="analysis/analysis-sample174.txt" valid="" %}
 
-While **@copyof** signifies a duplicate copy of an element, the **@sameas** indicates that the current element represents exactly the same entity as the one referenced in **@sameas**. Use of **@sameas** is used for describing the same entity from multiple perspectives, e.g., the same event in two layers. The following example illustrates the sharing of one note head between two voices in the first full measure of a chorale:
-
-{% include figure img="modules/analysis/chor003_m1-2.png" caption="Bach Chorale, Ach Gott, vom Himmel sieh' darein, m. 1-2" %}
-{% include mei example="analysis/analysis-sample175.txt" valid="" %}
+While **@copyof** signifies a duplicate copy of an element, the **@sameas** indicates that the current element represents exactly the same entity as the one referenced in **@sameas**. Use of **@sameas** is used for describing the same entity from multiple perspectives, e.g., the same event in two layers.
 
 While **@copyof** and **@sameas** have defined semantics, the **@corresp** may be used to create user-defined relationships between elements. The example below demonstrates the encoding of a relationship between the third note and the fermata, even though the fermata is not placed directly above the note.
 
