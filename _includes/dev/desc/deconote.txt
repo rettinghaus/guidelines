@@ -1,1 +1,0 @@
-(decoration note) – Contains a description of one or more decorative features of an item.

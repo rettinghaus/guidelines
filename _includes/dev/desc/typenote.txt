@@ -1,1 +1,0 @@
-(type note) – Describes a particular font or other significant typographic feature of a printed resource.
