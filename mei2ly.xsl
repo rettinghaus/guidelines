@@ -10,8 +10,9 @@
 <!--          -->
 <xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:mei="http://www.music-encoding.org/ns/mei" xmlns:saxon="http://saxon.sf.net/" xmlns:local="NS:LOCAL" exclude-result-prefixes="saxon">
   <xsl:strip-space elements="*" />
-  <xsl:output method="text" indent="no" encoding="UTF-8" />
+  <xsl:output method="text" indent="no" encoding="UTF-8"/>
   <xsl:param name="LilyPondVersion" select="'2.19.55'"/>
+  <xsl:param name="include" as="xs:string"/>
   <xsl:param name="useSvgBackend" select="false()" as="xs:boolean"/>
   <xsl:param name="generateHeader" select="true()" as="xs:boolean"/>
   <xsl:param name="forceLayout" select="false()" as="xs:boolean"/>
@@ -74,8 +75,10 @@
       </xsl:if>
     </xsl:if>
     <xsl:value-of select="concat('\version &quot;', $LilyPondVersion,'&quot;&#10;')"/>
-    <xsl:value-of select="'\include &quot;init-guidelines.ily&quot;&#10;'"/>
-    <xsl:text>% automatically converted by mei2ly.xsl&#10;&#10;</xsl:text>
+    <xsl:text>% automatically converted from MEI by mei2ly.xsl&#10;&#10;</xsl:text>
+    <xsl:if test="$include">
+      <xsl:value-of select="concat('\include &quot;', $include,'&quot;&#10;&#10;')"/>
+    </xsl:if>
     <xsl:apply-templates>
       <xsl:with-param name="layerNs" tunnel="yes">
         <xsl:if test="$forceContinueVoices">
@@ -1218,14 +1221,21 @@
   </xsl:template>
   <!-- MEI multiple rest -->
   <xsl:template match="mei:multiRest[@num]">
-    <xsl:text>\once \compressFullBarRests </xsl:text>
+    <xsl:text>\compressMMRests </xsl:text>
     <xsl:if test="$useSvgBackend">
       <xsl:text>\tweak MultiMeasureRest.output-attributes #&apos;</xsl:text>
       <xsl:call-template name="setSvgAttr" />
     </xsl:if>
     <!-- att.multiRest.vis -->
-    <xsl:if test="@block = true()">
-      <xsl:value-of select="'\tweak expand-limit #0 '" />
+    <xsl:if test="@block">
+      <xsl:choose>
+        <xsl:when test="@block = true()">
+          <xsl:value-of select="'\tweak expand-limit #0 '" />
+        </xsl:when>
+        <xsl:when test="@block = false()">
+          <xsl:value-of select="concat('\tweak expand-limit #', @num + 1, ' ')" />
+        </xsl:when>
+      </xsl:choose>
     </xsl:if>
     <xsl:if test="@loc">
       <xsl:value-of select="concat('\tweak staff-position #',@loc - 4,' ')" />
@@ -1246,9 +1256,14 @@
         </xsl:call-template>
       </xsl:when>
       <xsl:otherwise>
-        <xsl:text>1</xsl:text>
+        <!-- unmetered music -->
+        <xsl:value-of select="@num"/>
       </xsl:otherwise>
     </xsl:choose>
+    <!-- for a single 1 we use markup -->
+    <xsl:if test="@num = 1">
+      <xsl:text>^\markup{\musicglyph #"one"}</xsl:text>
+    </xsl:if>
     <xsl:if test="ancestor::mei:measure/mei:fermata/@startid = concat('#',@xml:id)">
       <xsl:apply-templates select="ancestor::mei:measure/mei:fermata[@startid = concat('#',current()/@xml:id)]"/>
       <xsl:value-of select="'Markup'" />
