@@ -2101,7 +2101,7 @@
     </xsl:if>
   </xsl:template>
   <xsl:template match="mei:dynam">
-    <xsl:variable name="dynamicMarks" select="('ppppp', 'pppp', 'ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff', 'ffff', 'fffff', 'fp', 'sf', 'sff', 'sp', 'spp', 'sfz', 'rfz')"/>
+    <xsl:variable name="dynamicMarks" select="('ppppp', 'pppp', 'ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff', 'ffff', 'fffff', 'fp', 'sf', 'sff', 'sp', 'spp', 'sfz', 'rfz', 'fz')"/>
     <xsl:if test="$useSvgBackend">
       <xsl:text>-\tweak output-attributes #&apos;</xsl:text>
       <xsl:call-template name="setSvgAttr" />
