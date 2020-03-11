@@ -11,7 +11,7 @@
 <xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:mei="http://www.music-encoding.org/ns/mei" xmlns:saxon="http://saxon.sf.net/" xmlns:local="NS:LOCAL" exclude-result-prefixes="saxon">
   <xsl:strip-space elements="*" />
   <xsl:output method="text" indent="no" encoding="UTF-8"/>
-  <xsl:param name="LilyPondVersion" select="'2.19.80'"/>
+  <xsl:param name="LilyPondVersion" select="'2.20.0'"/>
   <xsl:param name="include" select="''" as="xs:string"/>
   <xsl:param name="useSvgBackend" select="false()" as="xs:boolean"/>
   <xsl:param name="generateHeader" select="true()" as="xs:boolean"/>
@@ -418,7 +418,7 @@
       </xsl:for-each>
       <xsl:text>)&#10;</xsl:text>
     </xsl:if>
-    <xsl:apply-templates select="mei:staffGrp|mei:staffDef" mode="score-setup"/>
+    <xsl:apply-templates select="mei:staffGrp" mode="score-setup"/>
     <xsl:text>&gt;&gt;&#10;</xsl:text>
     <!-- lilypond layout block -->
     <xsl:text>\layout {&#10;</xsl:text>
@@ -508,7 +508,7 @@
           <xsl:value-of select="concat('&#10;#(set-global-staff-size ',8 * number(substring-before(@vu.height,'pt')),')&#10;')" />
         </xsl:when>
         <xsl:otherwise>
-          <xsl:message>INFO: Use point values (pt) for @vu.height</xsl:message>
+          <xsl:message select="'INFO: Use point values (pt) for @vu.height'" />
         </xsl:otherwise>
       </xsl:choose>
     </xsl:if>
@@ -522,8 +522,13 @@
       <xsl:text>} </xsl:text>
     </xsl:if>
     <xsl:text>&lt;&lt;&#10;</xsl:text>
-    <xsl:call-template name="setStaffGrpStyle" />
-    <xsl:apply-templates select="mei:staffGrp|mei:staffDef" mode="score-setup"/>
+    <xsl:if test="@bar.thru">
+      <xsl:value-of select="concat(' \override StaffGroup.BarLine.allow-span-bar = ##',substring(@bar.thru,1,1),'&#10;')" />
+    </xsl:if>
+    <xsl:if test="not(mei:grpSym)">
+      <xsl:call-template name="setStaffGrpStyle" />
+    </xsl:if>
+    <xsl:apply-templates select="mei:grpSym|mei:staffGrp|mei:staffDef" mode="score-setup"/>
     <xsl:text>&gt;&gt;&#10;</xsl:text>
   </xsl:template>
   <!-- MEI staff definitons -->
@@ -1301,6 +1306,9 @@
     <xsl:text>s</xsl:text>
     <xsl:call-template name="setDuration" />
     <xsl:value-of select="' '" />
+  </xsl:template>
+  <!-- MEI measure repeats -->
+  <xsl:template match="mei:mRpt">
   </xsl:template>
   <!-- MEI measure space -->
   <xsl:template name="setMeasureSpace" match="mei:mSpace">
@@ -2101,7 +2109,7 @@
     </xsl:if>
   </xsl:template>
   <xsl:template match="mei:dynam">
-    <xsl:variable name="dynamicMarks" select="('ppppp', 'pppp', 'ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff', 'ffff', 'fffff', 'fp', 'sf', 'sff', 'sp', 'spp', 'sfz', 'rfz', 'fz')"/>
+    <xsl:variable name="dynamicMarks" select="('ppppp', 'pppp', 'ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff', 'ffff', 'fffff', 'fp', 'sf', 'sff', 'sp', 'spp', 'sfz', 'rfz')"/>
     <xsl:if test="$useSvgBackend">
       <xsl:text>-\tweak output-attributes #&apos;</xsl:text>
       <xsl:call-template name="setSvgAttr" />
@@ -2115,6 +2123,9 @@
       <xsl:when test="normalize-space(.)=$dynamicMarks or contains(.,'cresc') or contains(.,'dim')">
         <!-- this should work in most cases -->
         <xsl:value-of select="concat('\',translate(.,'.',''))" />
+      </xsl:when>
+      <xsl:when test="matches(.,'^[rsfmpz]+$')">
+        <xsl:value-of select="concat('\markup { \dynamic ',.,'} ')" />
       </xsl:when>
       <xsl:otherwise>
         <xsl:value-of select="concat('\markup {',.,'} ')" />
@@ -2562,6 +2573,11 @@
     <xsl:apply-templates/>
     <xsl:text>}&#32;</xsl:text>
   </xsl:template>
+  <xsl:template match="mei:label[parent::mei:verse]">
+    <xsl:text>\set stanza = \markup {</xsl:text>
+    <xsl:apply-templates/>
+    <xsl:text>}&#32;</xsl:text>
+  </xsl:template>
   <!-- MEI line break -->
   <xsl:template match="mei:lb">
   </xsl:template>
@@ -2602,7 +2618,7 @@
     <xsl:apply-templates/>
     <xsl:text>}&#32;</xsl:text>
   </xsl:template>
-  <!-- MEI rend -->
+  <!-- MEI render -->
   <xsl:template match="mei:rend">
     <xsl:if test="@color">
       <xsl:value-of select="'\with-color #'" />
@@ -2705,15 +2721,16 @@
       <xsl:call-template name="setColor" />
     </xsl:if>
     <xsl:choose>
-      <xsl:when test="$keyTonic and $keyMode">
-        <xsl:value-of select="concat('\key ',$keyTonic)" />
-        <xsl:apply-templates mode="setAccidental" select="$keyAccid"/>
-        <xsl:value-of select="concat(' \',$keyMode,' ')" />
-      </xsl:when>
       <xsl:when test="$keySig != 'mixed'">
         <xsl:call-template name="transformKey">
           <xsl:with-param name="accidentals" select="$keySig" />
         </xsl:call-template>
+      </xsl:when>
+      <!-- if there is no explicit key try implicit -->
+      <xsl:when test="$keyTonic and $keyMode">
+        <xsl:value-of select="concat('\key ',$keyTonic)" />
+        <xsl:apply-templates mode="setAccidental" select="$keyAccid"/>
+        <xsl:value-of select="concat(' \',$keyMode,' ')" />
       </xsl:when>
     </xsl:choose>
     <xsl:if test="./mei:keyAccid">
@@ -3097,7 +3114,7 @@
       <!-- data.STEMDIRECTION.extended -->
       <xsl:otherwise>
         <xsl:text>\tweak Stem.direction #0 </xsl:text>
-        <xsl:message>INFO: LilyPond only supports basic stem directions</xsl:message>
+        <xsl:message select="'INFO: LilyPond only supports basic stem directions'" />
       </xsl:otherwise>
     </xsl:choose>
     <xsl:if test="@stem.pos">
@@ -3182,7 +3199,7 @@
     <xsl:apply-templates select="mei:dot"/>
   </xsl:template>
   <!-- set accidental -->
-  <xsl:template mode="setAccidental" match="@accid | @accid.ges">
+  <xsl:template mode="setAccidental" match="@accid | @accid.ges | @key.accid">
     <xsl:param name="accidental" select="."/>
     <!-- data.ACCIDENTAL.WRITTEN -->
     <xsl:choose>
@@ -3476,33 +3493,43 @@
     </xsl:choose>
     <xsl:text>&#10;</xsl:text>
   </xsl:template>
-  <!-- set staff group style -->
-  <xsl:template name="setStaffGrpStyle">
-    <if test="count(descendant::mei:staffDef) = 1">
-      <xsl:text> \override StaffGroup.SystemStartBracket.collapse-height = #1</xsl:text>
-    </if>
-    <xsl:text> \set StaffGroup.systemStartDelimiter = </xsl:text>
-    <xsl:choose>
-      <xsl:when test="@symbol = 'brace'">
-        <xsl:text>#'SystemStartBrace</xsl:text>
-      </xsl:when>
-      <xsl:when test="@symbol = 'bracket'">
-        <xsl:text>#'SystemStartBracket</xsl:text>
-      </xsl:when>
-      <xsl:when test="@symbol = 'bracketsq'">
-        <xsl:text>#'SystemStartSquare</xsl:text>
-      </xsl:when>
-      <xsl:when test="@symbol = 'line'">
-        <xsl:text>#'SystemStartBar</xsl:text>
-      </xsl:when>
-      <xsl:otherwise>
-        <xsl:text>#'SystemStartBar</xsl:text>
-      </xsl:otherwise>
-    </xsl:choose>
-    <xsl:text>&#10;</xsl:text>
-    <xsl:if test="@bar.thru">
-      <xsl:value-of select="concat('  \override StaffGroup.BarLine.allow-span-bar = ##',substring(@bar.thru,1,1),'&#10;')" />
+  <!-- MEI group symbol -->
+  <xsl:template name="setStaffGrpStyle" match="mei:grpSym[not(@symbol = 'line')]" mode="score-setup">
+    <!-- att.staffGroupingSym -->
+    <xsl:variable name="object">
+      <xsl:choose>
+        <xsl:when test="@symbol = 'brace'">
+          <xsl:text>SystemStartBrace</xsl:text>
+        </xsl:when>
+        <xsl:when test="@symbol = 'bracket'">
+          <xsl:text>SystemStartBracket</xsl:text>
+        </xsl:when>
+        <xsl:when test="@symbol = 'bracketsq'">
+          <xsl:text>SystemStartSquare</xsl:text>
+        </xsl:when>
+        <xsl:when test="@symbol = 'line'">
+          <xsl:text>SystemStartBar</xsl:text>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:text>SystemStartBar</xsl:text>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
+    <xsl:if test="$useSvgBackend">
+      <xsl:value-of select="concat('\override StaffGroup.', $object, '.output-attributes = ')" />
+      <xsl:text>#'((class . grpSym))</xsl:text>
     </xsl:if>
+    <xsl:if test="@ho or @vo">
+      <xsl:value-of select="concat(' \override StaffGroup.', $object, '.extra-offset = ')" />
+      <xsl:text>#&apos;</xsl:text>
+      <xsl:call-template name="setOffset" />
+    </xsl:if>
+    <xsl:if test="not($object ='SystemStartBar') and ((count(descendant::mei:staffDef) = 1) or (count(self::mei:grpSym/following-sibling::mei:staffDef) = 1))">
+      <xsl:value-of select="concat('\override StaffGroup.', $object, '.collapse-height = #1&#10;')" />
+    </xsl:if>
+    <xsl:text> \set StaffGroup.systemStartDelimiter = #'</xsl:text>
+    <xsl:value-of select="$object" />
+    <xsl:text>&#10;</xsl:text>
   </xsl:template>
   <!-- set simple markup diections -->
   <xsl:template name="setMarkupDirection">
@@ -4959,7 +4986,7 @@
         <xsl:value-of select="concat(ancestor::mei:mdiv[1]//mei:staffDef[@n=$staffNumber][1]/@lyric.weight,' ')" />
       </xsl:if>
       <xsl:for-each select="ancestor::mei:mdiv[1]//mei:staff[@n=$staffNumber]/mei:layer[1]">
-        <xsl:for-each select="descendant::*[self::mei:note[not(@grace)] or self::mei:rest or self::mei:mRest]">
+        <xsl:for-each select="descendant::*[self::mei:note[not(ancestor-or-self::*/@grace)] or self::mei:rest or self::mei:mRest]">
             <xsl:choose>
               <xsl:when test="descendant::mei:syl">
                 <xsl:apply-templates select="mei:verse[not(number(@n)) or @n=$verseNumber]|mei:syl" />
