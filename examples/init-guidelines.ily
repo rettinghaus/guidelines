@@ -12,5 +12,4 @@ ragged-last = ##f
 indent = #0
 }
 
-fz = #(make-dynamic-script "fz")
 
