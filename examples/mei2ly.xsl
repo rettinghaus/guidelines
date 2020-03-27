@@ -790,6 +790,14 @@
         <xsl:with-param name="color" select="$clefColor" />
       </xsl:call-template>
     </xsl:if>
+    <xsl:if test="@fontsize">
+      <xsl:text>\once \override Staff.Clef.font-size = #</xsl:text>
+      <xsl:call-template name="setRelFontsizeNum" />
+    </xsl:if>
+    <xsl:if test="@ho or @vo">
+      <xsl:text>\once \override Staff.Clef.extra-offset = #'</xsl:text>
+      <xsl:call-template name="setOffset" />
+    </xsl:if>
     <xsl:if test="@cautionary">
       <xsl:value-of select="concat('\set Staff.forceClef = ##',substring(@cautionary,1,1),' ')"/>
     </xsl:if>
@@ -823,13 +831,13 @@
     <xsl:if test="@grace and not(ancestor::*/@grace)">
       <xsl:call-template name="setGraceNote" />
     </xsl:if>
-    <xsl:if test="@fontsize">
-      <xsl:text>\tweak font-size #</xsl:text>
-      <xsl:call-template name="setRelFontsizeNum" />
-    </xsl:if>
     <xsl:if test="$useSvgBackend">
       <xsl:text>\tweak output-attributes #&apos;</xsl:text>
       <xsl:call-template name="setSvgAttr" />
+    </xsl:if>
+    <xsl:if test="@fontsize">
+      <xsl:text>\tweak font-size #</xsl:text>
+      <xsl:call-template name="setRelFontsizeNum" />
     </xsl:if>
     <xsl:if test="@visible">
       <xsl:call-template name="setVisibility"/>
@@ -1194,6 +1202,9 @@
     </xsl:if>
     <xsl:if test="key('spannerEnd',$restKey)[self::mei:tupletSpan]">
       <xsl:value-of select="' }'" />
+    </xsl:if>
+    <xsl:if test="key('spannerEnd',$restKey)[self::mei:octave]">
+      <xsl:value-of select="'\unset Staff.ottavation'" />
     </xsl:if>
     <xsl:value-of select="' '" />
     <xsl:if test="@staff and @staff != ancestor::mei:staff/@n">
@@ -2868,6 +2879,10 @@
     <xsl:if test="@fontname">
       <xsl:value-of select="concat('\tweak TimeSignature.font-name #&quot;',@fontname,'&quot; ')" />
     </xsl:if>
+    <xsl:if test="@fontsize">
+      <xsl:text>\tweak TimeSignature.font-size #&apos;</xsl:text>
+      <xsl:call-template name="setRelFontsizeNum" />
+    </xsl:if>
     <xsl:if test="@fontstyle">
       <xsl:text>\tweak TimeSignature.font-shape #&apos;</xsl:text>
       <xsl:value-of select="concat(@fontstyle,' ')" />
@@ -4090,8 +4105,9 @@
     </xsl:choose>
   </xsl:template>
   <xsl:template name="setRelFontsizeNum">
-    <!-- data.FONTSIZETERM -->
+    <!-- data.FONTSIZE -->
     <xsl:choose>
+      <!-- data.FONTSIZETERM -->
       <xsl:when test="@fontsize = 'xx-small'">
         <xsl:value-of select="'-3 '" />
       </xsl:when>
@@ -4112,6 +4128,10 @@
       </xsl:when>
       <xsl:when test="@fontsize = 'xx-large'">
         <xsl:value-of select="'+3 '" />
+      </xsl:when>
+      <!-- data.PERCENT -->
+      <xsl:when test="contains(@fontsize, '%')">
+        <xsl:value-of select="concat('(magnification->font-size ', number(substring-before(@fontsize,'%')) div 100, ') ')" />
       </xsl:when>
       <xsl:otherwise>
         <xsl:message select="concat('WARNING: Unsupported fontsize: ', @fontsize)" />
@@ -4850,22 +4870,22 @@
         <xsl:text>\markup {\musicglyph #"scripts.dverylongfermata"}</xsl:text>
       </xsl:when>
       <!-- Common ornaments (U+E560 – U+E56F) -->
-      <xsl:when test="contains(@glyph.num,'E566')">
+      <xsl:when test="@glyph.name = 'ornamentTrill' or contains(@glyph.num,'E566')">
         <xsl:text>\trill</xsl:text>
       </xsl:when>
-      <xsl:when test="contains(@glyph.num,'E567')">
+      <xsl:when test="@glyph.name = 'ornamentTurn' or contains(@glyph.num,'E567')">
         <xsl:text>\turn</xsl:text>
       </xsl:when>
-      <xsl:when test="contains(@glyph.num,'E568')">
+      <xsl:when test="@glyph.name = 'ornamentTurnInverted' or contains(@glyph.num,'E568')">
         <xsl:text>\reverseturn</xsl:text>
       </xsl:when>
-      <xsl:when test="contains(@glyph.num,'E56C')">
+      <xsl:when test="@glyph.name = 'ornamentShortTrill' or contains(@glyph.num,'E56C')">
         <xsl:text>\prall</xsl:text>
       </xsl:when>
-      <xsl:when test="contains(@glyph.num,'E56D')">
+      <xsl:when test="@glyph.name = 'ornamentMordent' or contains(@glyph.num,'E56D')">
         <xsl:text>\mordent</xsl:text>
       </xsl:when>
-      <xsl:when test="contains(@glyph.num,'E56E')">
+      <xsl:when test="@glyph.name = 'ornamentTremblement' or contains(@glyph.num,'E56E')">
         <xsl:text>\prallprall</xsl:text>
       </xsl:when>
       <!-- Precomposed trills and mordents (U+E5B0 – U+E5CF) -->
