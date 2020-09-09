@@ -434,7 +434,7 @@
     <xsl:if test="$forceLayout">
       <xsl:text> \context { \Score \override NonMusicalPaperColumn.line-break-permission = ##f \override NonMusicalPaperColumn.page-break-permission = ##f }&#10;</xsl:text>
     </xsl:if>
-    <xsl:if test="@bar.method or @clef.color or @multi.number or @system.leftline">
+    <xsl:if test="@bar.method or @clef.color or @multi.number or @slur.lwidth or @system.leftline  or @tie.lwidth">
       <xsl:text> \context { \Score </xsl:text>
       <xsl:if test="@bar.method = 'takt'">
         <xsl:text>defaultBarType = #"'" </xsl:text>
@@ -442,6 +442,18 @@
       <xsl:if test="@multi.number">
         <!-- att.multinummeasures -->
         <xsl:value-of select="concat('countPercentRepeats = ##',substring(@multi.number,1,1),' ')" />
+      </xsl:if>
+      <xsl:if test="@slur.lwidth">
+        <xsl:text>\override Slur.thickness = #</xsl:text>
+        <xsl:call-template name="setLineWidth">
+          <xsl:with-param name="thickness" select="@slur.lwidth" />
+        </xsl:call-template>
+      </xsl:if>
+      <xsl:if test="@tie.lwidth">
+        <xsl:text>\override Tie.thickness = #</xsl:text>
+        <xsl:call-template name="setLineWidth">
+          <xsl:with-param name="thickness" select="@tie.lwidth" />
+        </xsl:call-template>
       </xsl:if>
       <xsl:if test="@system.leftline">
         <xsl:choose>
@@ -515,7 +527,7 @@
     <xsl:if test="@vu.height">
       <xsl:choose>
         <xsl:when test="contains(@vu.height,'pt')">
-          <xsl:value-of select="concat('&#10;#(set-global-staff-size ',8 * number(substring-before(@vu.height,'pt')),')&#10;')" />
+          <xsl:value-of select="concat('&#10;#(set-global-staff-size ', 8 * number(substring-before(@vu.height,'pt')),')&#10;')" />
         </xsl:when>
         <xsl:otherwise>
           <xsl:message select="'INFO: Use point values (pt) for @vu.height'" />
@@ -526,6 +538,14 @@
   <!-- MEI staff group -->
   <xsl:template match="mei:staffGrp" mode="score-setup">
     <xsl:text>\new StaffGroup </xsl:text>
+    <xsl:choose>
+      <xsl:when test="@n">
+        <xsl:value-of select="concat('= &quot;staffGrp ', @n, '&quot;&#32;')" />
+      </xsl:when>
+      <xsl:when test="@label">
+        <xsl:value-of select="concat('= &quot;', @label, '&quot;&#32;')" />
+      </xsl:when>
+    </xsl:choose>
     <xsl:if test="child::mei:label">
       <xsl:text>\with { </xsl:text>
       <xsl:call-template name="setInstrumentName" />
@@ -535,9 +555,14 @@
     <xsl:if test="@bar.thru">
       <xsl:value-of select="concat(' \override StaffGroup.BarLine.allow-span-bar = ##',substring(@bar.thru,1,1),'&#10;')" />
     </xsl:if>
-    <xsl:if test="not(mei:grpSym)">
-      <xsl:call-template name="setStaffGrpStyle" />
-    </xsl:if>
+    <xsl:choose>
+      <xsl:when test="@symbol">
+        <xsl:call-template name="setStaffGrpStyle" />
+      </xsl:when>
+      <xsl:when test="not(mei:grpSym)">
+        <xsl:text> \omit StaffGroup.SystemStartBracket &#10;</xsl:text>
+      </xsl:when>
+    </xsl:choose>
     <xsl:apply-templates select="mei:grpSym|mei:staffGrp|mei:staffDef" mode="score-setup" />
     <xsl:text>&gt;&gt;&#10;</xsl:text>
   </xsl:template>
@@ -611,13 +636,16 @@
     </xsl:if>
     <xsl:call-template name="setBeaming" />
     <xsl:if test="@slur.lform">
-      <xsl:value-of select="concat('\slur',translate(substring(@lform,1,1),'ds','DS'),substring(@lform,2),' ')" />
+      <xsl:value-of select="concat('\slur',translate(substring(@slur.lform,1,1),'ds','DS'),substring(@slur.lform,2),' ')" />
     </xsl:if>
     <xsl:if test="@slur.lwidth">
       <xsl:text>\override Slur.thickness = #</xsl:text>
       <xsl:call-template name="setLineWidth">
         <xsl:with-param name="thickness" select="@slur.lwidth" />
       </xsl:call-template>
+    </xsl:if>
+    <xsl:if test="@tie.lform">
+      <xsl:value-of select="concat('\slur',translate(substring(@tie.lform,1,1),'ds','DS'),substring(@tie.lform,2),' ')" />
     </xsl:if>
     <xsl:if test="@tie.lwidth">
       <xsl:text>\override Tie.thickness = #</xsl:text>
@@ -3604,7 +3632,7 @@
     <xsl:text>&#10;</xsl:text>
   </xsl:template>
   <!-- MEI group symbol -->
-  <xsl:template name="setStaffGrpStyle" match="mei:grpSym[not(@symbol = 'line')]" mode="score-setup">
+  <xsl:template name="setStaffGrpStyle" match="mei:grpSym[@symbol]" mode="score-setup">
     <!-- att.staffGroupingSym -->
     <xsl:variable name="object">
       <xsl:choose>
@@ -3620,9 +3648,6 @@
         <xsl:when test="@symbol = 'line'">
           <xsl:text>SystemStartBar</xsl:text>
         </xsl:when>
-        <xsl:otherwise>
-          <xsl:text>SystemStartBar</xsl:text>
-        </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
     <xsl:if test="$useSvgBackend">
@@ -3630,7 +3655,7 @@
       <xsl:text>#'((class . grpSym))</xsl:text>
     </xsl:if>
     <xsl:if test="@color">
-      <!-- not available in MEI -->
+      <!-- available in MEI dev -->
       <xsl:value-of select="concat(' \override StaffGroup.', $object, '.color = #')" />
       <xsl:call-template name="setColor" />
     </xsl:if>
@@ -3638,6 +3663,7 @@
       <xsl:value-of select="concat(' \override StaffGroup.', $object, '.extra-offset = ')" />
       <xsl:text>#&apos;</xsl:text>
       <xsl:call-template name="setOffset" />
+      <xsl:text>&#10;</xsl:text>
     </xsl:if>
     <xsl:if test="not($object ='SystemStartBar') and ((count(descendant::mei:staffDef) = 1) or (count(self::mei:grpSym/following-sibling::mei:staffDef) = 1))">
       <xsl:value-of select="concat('\override StaffGroup.', $object, '.collapse-height = #1&#10;')" />
@@ -5065,7 +5091,7 @@
     </xsl:if>
     <xsl:if test="@spacing.system">
       <xsl:text>  system-system-spacing.basic-distance = #</xsl:text>
-      <xsl:value-of select="concat(local:VU2LY(@spacing.system) + 4,' ')" />
+      <xsl:value-of select="concat(local:VU2LY(@spacing.system) + 2,' ')" />
     </xsl:if>
     <!-- <xsl:value-of select="@page.panels" />
   <xsl:value-of select="@page.scale" /> -->
